@@ -1,11 +1,11 @@
 /**
- * Application: Secure Data Converter (Client-Side)
- * DevSecOps Focus: Strict CSP, Dynamic Flattening & Anti-CSV Injection.
+ * Application: Universal Data Converter & Compatibility Engine
+ * DevSecOps Focus: Strict CSP, Dynamic Flattening, Anti-CSV Injection & Multi-Delimiter Parsing.
  */
 
 'use strict';
 
-// Anti-Clickjacking Frame Buster
+// Frame Buster para prevenir Clickjacking
 if (self !== top) {
     top.location = self.location;
 }
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let processedData = null;
 
     /**
-     * Prevenção de CSV/Formula Injection
+     * Prevenção de CSV / Formula Injection
      */
     const sanitizeForCSV = (value) => {
         if (typeof value === 'string') {
@@ -45,9 +45,65 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
-     * Achatamento recursivo seguro de objetos JSON aninhados
+     * Detecta automaticamente o delimitador mais provável na primeira linha do texto
+     */
+    const detectDelimiter = (text) => {
+        const firstLine = text.split(/\r\n|\n/)[0] || '';
+        const delimiters = [',', ';', '\t', '|'];
+        
+        let bestDelimiter = ',';
+        let maxCount = -1;
+
+        delimiters.forEach(delim => {
+            // Conta ocorrências do delimitador
+            const count = (firstLine.match(new RegExp(`\\${delim}`, 'g')) || []).length;
+            if (count > maxCount) {
+                maxCount = count;
+                bestDelimiter = delim;
+            }
+        });
+
+        return bestDelimiter;
+    };
+
+    /**
+     * Parser de linha CSV/Tabular robusto com suporte a delimitadores dinâmicos e aspas
+     */
+    const parseCSVLine = (line, delimiter) => {
+        const escapedDelimiter = delimiter === '\t' ? '\\t' : `\\${delimiter}`;
+        const pattern = new RegExp(
+            `(\\s*${escapedDelimiter}\\s*|\\r?\\n|\\r|^)` +
+            `(?:"((?:""|[^"])*)"|([^"${escapedDelimiter}\r\n]*))`,
+            'gi'
+        );
+        
+        const result = [];
+        let matches = null;
+
+        while ((matches = pattern.exec(line))) {
+            let value = '';
+            if (matches[2] !== undefined) {
+                // Valor entre aspas (trata aspas duplas escapadas "")
+                value = matches[2].replace(/""/g, '"');
+            } else if (matches[3] !== undefined) {
+                // Valor sem aspas
+                value = matches[3].trim();
+            }
+            
+            result.push(value);
+        }
+
+        return result;
+    };
+
+    /**
+     * Achatamento recursivo seguro capaz de lidar com objetos profundos e arrays de objetos/primitivos
      */
     const flattenObject = (obj, prefix = '', res = {}) => {
+        if (obj === null || obj === undefined) {
+            return res;
+        }
+
         for (const key in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
                 const propName = prefix ? `${prefix}.${key}` : key;
@@ -56,8 +112,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
                     flattenObject(val, propName, res);
                 } else if (Array.isArray(val)) {
-                    // Se for um array de primitivos, une por vírgula; se for de objetos, serializa em string
-                    res[propName] = val.map(v => typeof v === 'object' ? JSON.stringify(v) : v).join('; ');
+                    if (val.length === 0) {
+                        res[propName] = '';
+                    } else if (typeof val[0] === 'object' && val[0] !== null) {
+                        // Se o array contém objetos, mapeia achatando e une de forma legível
+                        res[propName] = val.map(item => {
+                            if (typeof item === 'object') {
+                                return JSON.stringify(flattenObject(item));
+                            }
+                            return item;
+                        }).join(' | ');
+                    } else {
+                        // Array de tipos primitivos (strings, números, booleans)
+                        res[propName] = val.join('; ');
+                    }
                 } else {
                     res[propName] = val;
                 }
@@ -67,29 +135,33 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /**
-     * Normalizador inteligente para relatórios complexos (ex: SAST / Vulnerabilidades)
+     * Normalizador universal para múltiplos tipos de estruturas JSON
      */
     const normalizeJsonData = (parsed) => {
-        // Caso 1: Array simples na raiz -> aplata cada item
+        // Caso 1: Array simples ou de objetos na raiz
         if (Array.isArray(parsed)) {
-            return parsed.map(item => flattenObject(item));
+            return parsed.map(item => {
+                if (typeof item === 'object' && item !== null) {
+                    return flattenObject(item);
+                }
+                return { valor: item };
+            });
         }
 
-        // Caso 2: Objeto raiz contendo uma chave com Array principal (ex: { sumario: {}, vulnerabilidades: [...] })
+        // Caso 2: Objeto raiz contendo coleções/listas internas
         if (typeof parsed === 'object' && parsed !== null) {
             const arrayKeys = Object.keys(parsed).filter(k => Array.isArray(parsed[k]));
 
             if (arrayKeys.length > 0) {
-                // Pega a primeira chave que é uma lista (ex: "vulnerabilidades" ou "items")
+                // Localiza a chave de lista principal (ex: "vulnerabilidades", "data", "items", "results")
                 const primaryArrayKey = arrayKeys[0];
                 const baseMetaData = { ...parsed };
-                delete baseMetaData[primaryArrayKey]; // Separa os metadados do array principal
+                delete baseMetaData[primaryArrayKey];
 
                 const flatMeta = flattenObject(baseMetaData);
 
                 return parsed[primaryArrayKey].map(item => {
-                    const flatItem = flattenObject(item);
-                    // Combina metadados (como sumario) em cada linha do relatório
+                    const flatItem = typeof item === 'object' && item !== null ? flattenObject(item) : { valor: item };
                     return { ...flatMeta, ...flatItem };
                 });
             }
@@ -98,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return [flattenObject(parsed)];
         }
 
-        throw new Error('Formato JSON não suportado para tabulação.');
+        throw new Error('O formato informado não é um JSON válido ou legível.');
     };
 
     const showStatus = (message, type = 'error') => {
@@ -125,8 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
         clearStatus();
 
         const reader = new FileReader();
+        const extension = file.name.split('.').pop().toLowerCase();
 
-        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        if (extension === 'xlsx' || extension === 'xls') {
             reader.readAsArrayBuffer(file);
             reader.onload = (e) => {
                 try {
@@ -137,16 +210,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     const jsonResult = XLSX.utils.sheet_to_json(worksheet);
 
                     rawInput.value = JSON.stringify(jsonResult, null, 2);
-                    showStatus('Arquivo Excel carregado com sucesso!', 'success');
+                    showStatus('Planilha Excel importada com sucesso!', 'success');
                 } catch {
-                    showStatus('Falha ao processar o arquivo Excel selecionado.');
+                    showStatus('Erro ao ler a planilha Excel selecionada.');
                 }
             };
         } else {
             reader.readAsText(file, 'UTF-8');
             reader.onload = (e) => {
                 rawInput.value = e.target.result;
-                showStatus('Arquivo lido com sucesso!', 'success');
+                showStatus(`Arquivo .${extension.toUpperCase()} carregado com sucesso!`, 'success');
             };
         }
     });
@@ -156,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const inputData = rawInput.value.trim();
 
         if (!inputData) {
-            showStatus('Por favor, insira os dados no campo de texto ou carregue um arquivo.');
+            showStatus('Por favor, insira o texto ou carregue um arquivo válido.');
             return;
         }
 
@@ -168,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             outputSection.classList.remove('hidden');
         } catch (error) {
-            showStatus(`Erro no processamento: ${error.message}`);
+            showStatus(`Erro ao processar dados: ${error.message}`);
         }
     });
 
@@ -177,12 +250,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             parsedJSON = JSON.parse(jsonText);
         } catch {
-            throw new Error('JSON inválido. Verifique a sintaxe.');
+            throw new Error('Sintaxe JSON inválida. Certifique-se de que o texto inserido é um JSON válido.');
         }
 
         const normalizedArray = normalizeJsonData(parsedJSON);
 
-        // Aplica Sanitização Anti-CSV Injection em todas as chaves/valores
+        // Aplica sanitização anti-CSV Injection em todas as chaves e valores
         processedData = normalizedArray.map(row => {
             const sanitizedRow = {};
             Object.keys(row).forEach(key => {
@@ -194,23 +267,32 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTablePreview(processedData);
     };
 
-    const processTabularToJson = (csvText) => {
-        const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
-        if (lines.length < 1) throw new Error('Conteúdo CSV vazio.');
+    const processTabularToJson = (rawText) => {
+        // Separa em linhas não vazias
+        const lines = rawText.split(/\r\n|\n/).filter(line => line.trim() !== '');
+        if (lines.length < 1) throw new Error('O conteúdo fornecido está vazio.');
 
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        // Auto-detecta o delimitador (, ; \t |)
+        const delimiter = detectDelimiter(rawText);
+        
+        const headers = parseCSVLine(lines[0], delimiter);
         const result = [];
 
         for (let i = 1; i < lines.length; i++) {
-            const currentLine = lines[i].split(',');
+            const currentLine = parseCSVLine(lines[i], delimiter);
+            
+            // Associa os valores com os cabeçalhos correspondentes
             if (currentLine.length === headers.length) {
                 const obj = {};
                 headers.forEach((header, index) => {
-                    let val = currentLine[index].trim().replace(/^"|"$/g, '');
-                    obj[header] = val;
+                    obj[header] = currentLine[index];
                 });
                 result.push(obj);
             }
+        }
+
+        if (result.length === 0) {
+            throw new Error('Não foi possível identificar registros válidos com o delimitador detectado.');
         }
 
         processedData = JSON.stringify(result, null, 2);
@@ -223,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!data || data.length === 0) return;
 
-        // Extrai todas as colunas possíveis de todos os objetos
+        // Extração de todos os cabeçalhos das propriedades achatadas
         const headers = Array.from(new Set(data.flatMap(obj => Object.keys(obj))));
 
         const trHead = document.createElement('tr');
@@ -272,18 +354,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadCSV = (data) => {
         const worksheet = XLSX.utils.json_to_sheet(data);
         const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
-        triggerDownload(csvOutput, 'arquivo_processado.csv', 'text/csv;charset=utf-8;');
+        triggerDownload(csvOutput, 'dados_convertidos.csv', 'text/csv;charset=utf-8;');
     };
 
     const downloadXLSX = (data) => {
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Vulnerabilidades');
-        XLSX.writeFile(workbook, 'arquivo_processado.xlsx');
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Dados');
+        XLSX.writeFile(workbook, 'dados_convertidos.xlsx');
     };
 
     const downloadJSON = (jsonString) => {
-        triggerDownload(jsonString, 'arquivo_processado.json', 'application/json;charset=utf-8;');
+        triggerDownload(jsonString, 'dados_convertidos.json', 'application/json;charset=utf-8;');
     };
 
     const triggerDownload = (content, fileName, mimeType) => {

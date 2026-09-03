@@ -11,15 +11,16 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=()" />
 
-    <title>Conversor de Dados (JSON ⇄ CSV/XLSX)</title>
+    <title>Conversor Universal de Dados (JSON ⇄ Tabular)</title>
 
     <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body>
     <header class="app-header">
-        <h1>Conversor de Dados</h1>
-        <p>Conversão bidirecional de JSON, CSV e XLSX com processamento 100% local (Client-Side).</p>
+        <h1>Conversor Universal de Dados</h1>
+        <p>Conversão e compatibilização bidirecional entre JSON, CSV e XLSX com processamento 100% local (Client-Side).
+        </p>
     </header>
 
     <main class="app-container">
@@ -29,8 +30,8 @@
             <div class="form-group">
                 <label for="conversion-mode"><strong>Direção da Conversão:</strong></label>
                 <select id="conversion-mode" class="input-control">
-                    <option value="json-to-tabular">JSON ➔ CSV / XLSX</option>
-                    <option value="tabular-to-json">CSV / XLSX ➔ JSON</option>
+                    <option value="json-to-tabular">Estrutura Complexa / JSON ➔ CSV / XLSX</option>
+                    <option value="tabular-to-json">CSV / XLSX ➔ JSON Organizado</option>
                 </select>
             </div>
 
@@ -47,16 +48,17 @@
             <div class="input-header">
                 <h2>Dados de Entrada</h2>
                 <div class="file-upload-wrapper">
-                    <label for="file-input" class="btn btn-secondary">Carregar Arquivo</label>
+                    <label for="file-input" class="btn btn-secondary">Carregar Arquivo (.json, .csv, .xlsx,
+                        .xls)</label>
                     <input type="file" id="file-input" accept=".json,.csv,.xlsx,.xls" class="hidden-input" />
                     <span id="file-name" class="file-name-display">Nenhum arquivo selecionado</span>
                 </div>
             </div>
 
             <div class="form-group">
-                <label for="raw-input">Cole o conteúdo aqui (JSON ou CSV em texto puro):</label>
+                <label for="raw-input">Cole o conteúdo textual (JSON ou CSV):</label>
                 <textarea id="raw-input" class="code-input"
-                    placeholder="[{'coluna1': 'valor1', 'coluna2': 'valor2'}]"></textarea>
+                    placeholder='Cole seu arquivo JSON ou dados CSV aqui...'></textarea>
             </div>
 
             <div class="action-buttons">
