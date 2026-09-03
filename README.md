@@ -84,7 +84,7 @@ Como a aplicação é 100% estática, não é necessário servidor web ou ambien
 1. **Clone o repositório:**
   
    ```bash
-   git clone [https://github.com/Mdsoare/json-converter.git](https://github.com/Mdsoare/json-converter.git)
+   git clone https://github.com/Mdsoare/json-converter.git
    cd json-converter
     ```
 
