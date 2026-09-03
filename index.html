@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-ancestors 'none'; form-action 'none'; base-uri 'self';" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=(), payment=()" />
+
+    <title>Conversor de Dados (JSON ⇄ CSV/XLSX)</title>
+
+    <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+
+<body>
+    <header class="app-header">
+        <h1>Conversor de Dados</h1>
+        <p>Conversão bidirecional de JSON, CSV e XLSX com processamento 100% local (Client-Side).</p>
+    </header>
+
+    <main class="app-container">
+        <div id="status-message" class="status-message hidden" role="alert" aria-live="polite"></div>
+
+        <section class="control-card">
+            <div class="form-group">
+                <label for="conversion-mode"><strong>Direção da Conversão:</strong></label>
+                <select id="conversion-mode" class="input-control">
+                    <option value="json-to-tabular">JSON ➔ CSV / XLSX</option>
+                    <option value="tabular-to-json">CSV / XLSX ➔ JSON</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="target-format-group">
+                <label for="target-format"><strong>Formato de Saída:</strong></label>
+                <select id="target-format" class="input-control">
+                    <option value="csv">CSV (Comma-Separated Values)</option>
+                    <option value="xlsx">XLSX (Excel Sheet)</option>
+                </select>
+            </div>
+        </section>
+
+        <section class="input-card">
+            <div class="input-header">
+                <h2>Dados de Entrada</h2>
+                <div class="file-upload-wrapper">
+                    <label for="file-input" class="btn btn-secondary">Carregar Arquivo</label>
+                    <input type="file" id="file-input" accept=".json,.csv,.xlsx,.xls" class="hidden-input" />
+                    <span id="file-name" class="file-name-display">Nenhum arquivo selecionado</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="raw-input">Cole o conteúdo aqui (JSON ou CSV em texto puro):</label>
+                <textarea id="raw-input" class="code-input"
+                    placeholder='[{"coluna1": "valor1", "coluna2": "valor2"}]'></textarea>
+            </div>
+
+            <div class="action-buttons">
+                <button id="btn-convert" class="btn btn-primary">Processar & Converter</button>
+                <button id="btn-clear" class="btn btn-danger">Limpar Tudo</button>
+            </div>
+        </section>
+
+        <section id="output-section" class="output-card hidden">
+            <div class="output-header">
+                <h2>Resultado Processado (Preview)</h2>
+                <button id="btn-download" class="btn btn-success">Baixar Artefato</button>
+            </div>
+
+            <div id="table-preview-container" class="preview-container hidden">
+                <table id="data-table" class="data-table">
+                    <thead id="table-head"></thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+
+            <div id="json-preview-container" class="preview-container hidden">
+                <textarea id="json-output" class="code-input" readonly></textarea>
+            </div>
+        </section>
+    </main>
+
+    <script src="assets/js/xlsx.full.min.js"></script>
+    <script src="assets/js/script.js"></script>
+</body>
+
+</html>
