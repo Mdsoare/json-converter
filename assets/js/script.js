@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const detectDelimiter = (text) => {
         const firstLine = text.split(/\r\n|\n/)[0] || '';
         const delimiters = [',', ';', '\t', '|'];
-        
+
         let bestDelimiter = ',';
         let maxCount = -1;
 
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `(?:"((?:""|[^"])*)"|([^"${escapedDelimiter}\r\n]*))`,
             'gi'
         );
-        
+
         const result = [];
         let matches = null;
 
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Valor sem aspas
                 value = matches[3].trim();
             }
-            
+
             result.push(value);
         }
 
@@ -274,13 +274,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Auto-detecta o delimitador (, ; \t |)
         const delimiter = detectDelimiter(rawText);
-        
+
         const headers = parseCSVLine(lines[0], delimiter);
         const result = [];
 
         for (let i = 1; i < lines.length; i++) {
             const currentLine = parseCSVLine(lines[i], delimiter);
-            
+
             // Associa os valores com os cabeçalhos correspondentes
             if (currentLine.length === headers.length) {
                 const obj = {};
@@ -353,8 +353,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const downloadCSV = (data) => {
         const worksheet = XLSX.utils.json_to_sheet(data);
-        const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
-        triggerDownload(csvOutput, 'dados_convertidos.csv', 'text/csv;charset=utf-8;');
+        const csvContent = XLSX.utils.sheet_to_csv(worksheet, { FS: ',' });
+        const formattedCsv = `sep=,\r\n` + csvContent;
+        const blob = new Blob(['\uFEFF' + formattedCsv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'dados_convertidos.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     const downloadXLSX = (data) => {
