@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadCSV = (data) => {
         const worksheet = XLSX.utils.json_to_sheet(data);
         const csvContent = XLSX.utils.sheet_to_csv(worksheet, { FS: ',' });
-        const formattedCsv = `sep=,\r\n` + csvContent;
+        const formattedCsv = 'sep=,\r\n' + csvContent;
         const blob = new Blob(['\uFEFF' + formattedCsv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
